@@ -10,4 +10,4 @@ use to check billingUsage everyDay in Google Cloud
 - 配置定时器运行
 # 效果
 - 每天检查用量，用量异常，发送至钉钉。
-- 每周一统计上周与上上周用量，并做对比。
+- 每周一统计上周与上上周用量，并做对比，发送到指定邮箱。
