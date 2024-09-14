@@ -1,0 +1,24 @@
+bigQuery:
+  #  这里是 bigquery账单 所在项目id
+  projectID: "your-project-id"
+
+
+webhook:
+  # 钉钉机器人 webhook
+  url: "your-webhook"
+  keyWord: "your-robot's keyWord"
+
+storage:
+  # 每周、每月用量存储位置
+  bucket: "your-bucket-name like `usage2email`"
+  projectID: "your-project-id"
+
+email:
+  smtpHost: "your-email-host like [smtp.gmail.com]"
+  smtpPort: 465
+  username: "your-email"
+  password: "your-email's key"
+
+recipients:
+  - "email1@xxx.com"
+  - "sux80796@gmail.com"
