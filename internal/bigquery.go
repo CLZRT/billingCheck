@@ -56,7 +56,27 @@ func (u *BigQueryUserCase) WeekUsage(ctx context.Context) ([][]bigquery.Value, e
 	return rows, nil
 
 }
+func (u *BigQueryUserCase) WeekCheck(ctx context.Context) ([][]bigquery.Value, error) {
+	rows, err := u.WeekUsage(ctx)
+	if err != nil {
+		return nil, err
+	}
 
+	var res [][]bigquery.Value
+	for idx, row := range rows {
+		rowLen := len(rows[idx])
+		if usageChange, ok := row[rowLen-1].(float64); ok {
+			if lastUsage, ok2 := row[1].(float64); ok2 {
+				if math.Abs(usageChange) > lastUsage*0.3 || usageChange > 500 {
+					res = append(res, row)
+				}
+			}
+		}
+
+	}
+	return res, nil
+
+}
 func (u *BigQueryUserCase) MonthUsage(ctx context.Context) ([][]bigquery.Value, error) {
 	last, cur := getFirstMonthDay()
 	lastMonth := last[:7]
@@ -81,9 +101,8 @@ func (u *BigQueryUserCase) MonthUsage(ctx context.Context) ([][]bigquery.Value, 
 	return rows, nil
 
 }
-
-func (u *BigQueryUserCase) DailyCheck(ctx context.Context) ([][]bigquery.Value, error) {
-	rows, err := u.DailyUsage(ctx)
+func (u *BigQueryUserCase) MonthCheck(ctx context.Context) ([][]bigquery.Value, error) {
+	rows, err := u.MonthUsage(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +112,7 @@ func (u *BigQueryUserCase) DailyCheck(ctx context.Context) ([][]bigquery.Value, 
 		rowLen := len(rows[idx])
 		if usageChange, ok := row[rowLen-1].(float64); ok {
 			if lastUsage, ok2 := row[1].(float64); ok2 {
-				if math.Abs(usageChange) > lastUsage*0.3 || math.Abs(usageChange) > 300 {
+				if math.Abs(usageChange) > lastUsage*0.3 {
 					res = append(res, row)
 				}
 			}
@@ -101,6 +120,7 @@ func (u *BigQueryUserCase) DailyCheck(ctx context.Context) ([][]bigquery.Value, 
 
 	}
 	return res, nil
+
 }
 func (u *BigQueryUserCase) DailyUsage(ctx context.Context) ([][]bigquery.Value, error) {
 	yesterday, today := getTodayAndYesterday()
@@ -121,6 +141,26 @@ func (u *BigQueryUserCase) DailyUsage(ctx context.Context) ([][]bigquery.Value, 
 		return nil, err
 	}
 	return rows, nil
+}
+func (u *BigQueryUserCase) DailyCheck(ctx context.Context) ([][]bigquery.Value, error) {
+	rows, err := u.DailyUsage(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var res [][]bigquery.Value
+	for idx, row := range rows {
+		rowLen := len(rows[idx])
+		if usageChange, ok := row[rowLen-1].(float64); ok {
+			if lastUsage, ok2 := row[1].(float64); ok2 {
+				if math.Abs(usageChange) > lastUsage*0.3 {
+					res = append(res, row)
+				}
+			}
+		}
+
+	}
+	return res, nil
 }
 
 func (u *BigQueryUserCase) getValues(ctx context.Context, q *bigquery.Query) ([][]bigquery.Value, error) {

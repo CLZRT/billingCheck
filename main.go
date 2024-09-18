@@ -21,40 +21,70 @@ func usageCheck() {
 	ctx := context.Background()
 
 	// Load configuration from YAML file
-	config, err := config.LoadConfig("config_bk.yaml")
+	loadConfig, err := config.LoadConfig("config_bk.yaml")
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Fatalf("failed to load loadConfig: %v", err)
 	}
 
 	// Initialize cases with configuration
-	bgUserCase := internal.NewBigQueryUserCase(config.BigQuery.ProjectID, ctx)
+	bgUserCase := internal.NewBigQueryUserCase(loadConfig.BigQuery.ProjectID, ctx)
 	defer bgUserCase.Client.Close()
 
-	webHookUserCase := internal.NewWebHookUserCaseWithDingTalk(config.Webhook.URL)
-	storageCase, err := internal.NewStorageCase(ctx, config.Storage.Bucket, config.Storage.ProjectID)
+	webHookUserCase := internal.NewWebHookUserCaseWithDingTalk(loadConfig.Webhook.URL)
+	storageCase, err := internal.NewStorageCase(ctx, loadConfig.Storage.Bucket, loadConfig.Storage.ProjectID)
 	defer storageCase.Close()
 
-	emailCase := internal.NewEmailUseCase(storageCase, config.Email.SMTPHost, config.Email.SMTPPort, config.Email.Username, config.Email.Password)
-	recipients := config.Recipients
+	emailCase := internal.NewEmailUseCase(storageCase, loadConfig.Email.SMTPHost, loadConfig.Email.SMTPPort, loadConfig.Email.Username, loadConfig.Email.Password)
+	recipients := loadConfig.Recipients
 
 	dailyUsage, err := bgUserCase.DailyCheck(ctx)
 	if err != nil {
 		log.Println(err)
 	}
-
 	// 日用量有异常才发送
 	if dailyUsage != nil {
 		webHookUserCase.Send2DingTalk(dailyUsage, "daily Warning")
 	} else {
-		webHookUserCase.Send2DingTalk(dailyUsage, "everything is well")
-		log.Println("everything is well")
+		webHookUserCase.Send2DingTalk(dailyUsage, "日用量无异常")
+		log.Println("日用量无异常")
 	}
 
-	fmt.Println(dailyUsage)
+	//周用量有异常 才发送
+	if isTodayTuesday() {
+		// 检查周用量数据异常
+		weekUsageCheck, err := bgUserCase.WeekCheck(ctx)
+		if err != nil {
+			return
+		}
+		if weekUsageCheck != nil {
+			webHookUserCase.Send2DingTalk(weekUsageCheck, "周用量异常")
+		} else {
+			webHookUserCase.Send2DingTalk(nil, "周用量无异常")
+			log.Println("周用量无异常")
+		}
+
+	}
+
+	// 月用量异常 发送
+
+	if isTodaySecond() {
+		monthUsageCheck, err := bgUserCase.MonthCheck(ctx)
+		if err != nil {
+			return
+		}
+		if monthUsageCheck != nil {
+			webHookUserCase.Send2DingTalk(monthUsageCheck, "月用量异常")
+		} else {
+			webHookUserCase.Send2DingTalk(nil, "月用量无异常")
+			log.Println("月用量无异常")
+		}
+
+	}
 
 	// 每周一，检查 (上周用量,上上周）和（本月，上月）用量
 	// 判断当天 是否为周一，周一才统计周，月用量
 	if isTodayMonthDay() {
+
 		weekUsage, err := bgUserCase.WeekUsage(ctx)
 		if err != nil {
 			log.Println(err)
@@ -98,7 +128,14 @@ func isTodayMonthDay() bool {
 	return time.Now().Weekday() == time.Monday
 }
 
-//减少项目，项目用量为0
+func isTodaySecond() bool {
+	return time.Now().Day() == 2
+}
+
+func isTodayTuesday() bool {
+
+	return time.Now().Weekday() == time.Tuesday
+}
 
 func DailyRun(ctx context.Context, e event.Event) error {
 	var msg MessagePublishedData
