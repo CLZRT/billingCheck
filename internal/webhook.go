@@ -3,7 +3,7 @@ package internal
 import (
 	"bytes"
 	"cloud.google.com/go/bigquery"
-	"clzrt.io/billingUsage"
+	"clzrt.io/billingUsage/internal/config"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -35,7 +35,7 @@ func NewWebHookUserCase(dingTalk, weChat, feiShu string) *WebHookUserCase {
 }
 
 func (u *WebHookUserCase) Send2DingTalk(rows [][]bigquery.Value, title string) string {
-	config, err := billingUsage.LoadConfig("config.yaml")
+	config, err := config.LoadConfig("config_bk.yaml")
 
 	message := map[string]interface{}{
 		"msgtype": "text",

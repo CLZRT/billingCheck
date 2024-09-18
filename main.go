@@ -2,13 +2,11 @@ package billingUsage
 
 import (
 	"clzrt.io/billingUsage/internal"
+	"clzrt.io/billingUsage/internal/config"
 	"context"
 	"fmt"
 	"github.com/cloudevents/sdk-go/v2/event"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"log"
-	"os"
 	"time"
 )
 
@@ -18,58 +16,12 @@ type MessagePublishedData struct {
 type PubSubMessage struct {
 	Data []byte `json:"data"`
 }
-type Config struct {
-	BigQuery struct {
-		ProjectID string `yaml:"projectID"`
-	} `yaml:"bigQuery"`
-
-	Webhook struct {
-		URL     string `yaml:"url"`
-		KeyWord string `yaml:"keyWord"`
-	} `yaml:"webhook"`
-
-	Storage struct {
-		Bucket    string `yaml:"bucket"`
-		ProjectID string `yaml:"projectID"`
-	} `yaml:"storage"`
-
-	Email struct {
-		SMTPHost string `yaml:"smtpHost"`
-		SMTPPort int    `yaml:"smtpPort"`
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-	} `yaml:"email"`
-
-	Recipients []string `yaml:"recipients"`
-}
-
-// LoadConfig reads the YAML configuration from the given file path
-func LoadConfig(configPath string) (*Config, error) {
-	configFile, err := os.Open(configPath)
-	if err != nil {
-		return nil, err
-	}
-	defer configFile.Close()
-
-	configData, err := ioutil.ReadAll(configFile)
-	if err != nil {
-		return nil, err
-	}
-
-	var config Config
-	err = yaml.Unmarshal(configData, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-}
 
 func usageCheck() {
 	ctx := context.Background()
 
 	// Load configuration from YAML file
-	config, err := LoadConfig("config.yaml")
+	config, err := config.LoadConfig("config_bk.yaml")
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"cloud.google.com/go/bigquery"
+	"clzrt.io/billingUsage/internal/config"
 	"context"
 	"google.golang.org/api/iterator"
 	"log"
@@ -11,6 +12,7 @@ import (
 
 type BigQueryUserCase struct {
 	Client *bigquery.Client
+	Config *config.Config
 }
 
 func NewBigQueryUserCase(projectID string, ctx context.Context) *BigQueryUserCase {
@@ -19,7 +21,8 @@ func NewBigQueryUserCase(projectID string, ctx context.Context) *BigQueryUserCas
 	if err != nil {
 		log.Println(err)
 	}
-	return &BigQueryUserCase{client}
+	config, err := config.LoadConfig("config_bk.yaml")
+	return &BigQueryUserCase{client, config}
 }
 func (u *BigQueryUserCase) WeekUsage(ctx context.Context) ([][]bigquery.Value, error) {
 	//第一天为周日
@@ -38,7 +41,8 @@ func (u *BigQueryUserCase) WeekUsage(ctx context.Context) ([][]bigquery.Value, e
 			"       SUM(CASE WHEN TIMESTAMP_TRUNC(_PARTITIONTIME, WEEK) = TIMESTAMP(\"" + cur + "\") THEN cost ELSE 0 END) - " +
 			"       SUM(CASE WHEN TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) = TIMESTAMP(\"" + next + "\") THEN cost ELSE 0 END) + " +
 			"       SUM(CASE WHEN TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) = TIMESTAMP(\"" + next + "\") THEN cost ELSE 0 END) AS curWeek_cost " +
-			"   FROM `billing-ftl-cloud.Daily_billing_gcp.gcp_billing_export_v1_017DBD_1FB85B_839E84` " +
+			"   FROM  `" +
+			u.Config.BigQuery.TableID + "`" +
 			"   WHERE TIMESTAMP_TRUNC(_PARTITIONTIME, WEEK) IN (TIMESTAMP(\"" + last + "\"), TIMESTAMP(\"" + cur + "\"), TIMESTAMP(\"" + next + "\")) " +
 			"   GROUP BY project.id " +
 			") AS costs " +
@@ -65,7 +69,8 @@ func (u *BigQueryUserCase) MonthUsage(ctx context.Context) ([][]bigquery.Value, 
 			"SUM(CASE WHEN TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH) = TIMESTAMP(\"" + cur + "\") THEN cost ELSE 0 END) AS curMonth_cost, " +
 			"SUM(CASE WHEN TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH) = TIMESTAMP(\"" + cur + "\") THEN cost ELSE 0 END) -" +
 			"SUM(CASE WHEN TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH) = TIMESTAMP(\"" + last + "\") THEN cost ELSE 0 END) AS cost_difference" +
-			" FROM `billing-ftl-cloud.Daily_billing_gcp.gcp_billing_export_v1_017DBD_1FB85B_839E84` " +
+			" FROM  `" +
+			u.Config.BigQuery.TableID + "`" +
 			" WHERE  TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH) IN (TIMESTAMP(\"" + last + "\"), TIMESTAMP(\"" + cur + "\")) " +
 			" GROUP BY project.id " +
 			" ORDER BY  cost_difference DESC ")
